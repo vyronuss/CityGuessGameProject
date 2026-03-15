@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-const APP_ID = "P7HY9HJ89U";
+const APP_ID = "";
 
 app.use(cors()); // <-- THIS fixes the problem
 
@@ -20,6 +20,7 @@ app.get("/wolfram", async (req, res) => {
 
     res.json(data);
 });
+
 
 app.listen(3000, () => {
     console.log("Server running at http://localhost:3000");
