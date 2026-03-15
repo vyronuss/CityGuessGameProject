@@ -329,11 +329,11 @@
             
           });
 
-          geocode({ address: guessField.value }, guessedmarker);
+          geocode({ address: `${guessField.value}, ${province}` }, guessedmarker);
           // Geocode the guess address and update multiplemarker position
-          geocode({ address: guessField.value }, multiplemarker);
+          geocode({ address: `${guessField.value}, ${province}` }, multiplemarker);
           // Geocode the city and calculate distance if successful
-          geocoder.geocode({ address: city }, (results, status) => {
+          geocoder.geocode({ address: `${city}, ${province}, ${country}` }, (results, status) => {
               if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
                   hiddenCityMarker = new google.maps.Marker({
                       position: results[0].geometry.location,
@@ -452,12 +452,12 @@
             
           });
 
-          geocode({ address: guessField.value }, guessedmarker);
+          geocode({ address: `${guessField.value}, ${province}` }, guessedmarker);
           // Geocode the guess address and update multiplemarker position
-          geocode({ address: guessField.value }, multiplemarker);
+          geocode({ address: `${guessField.value}, ${province}` }, multiplemarker);
       
           // Geocode the city and calculate distance if successful
-          geocoder.geocode({ address: city }, (results, status) => {
+          geocoder.geocode({ address: `${city}, ${province}, ${country}` }, (results, status) => {
               if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
                   hiddenCityMarker = new google.maps.Marker({
                       position: results[0].geometry.location,
@@ -809,6 +809,7 @@
                     label1.innerText = "Your guess of " + guess + " was correct! The country was indeed " + country + ". Now, guess the province.";
                     instructionLabel.innerText = "Guess the province!";
                     countryname.innerText = "Country: " + country;
+
     
                     charactersLabel.innerText = "";
                 }
