@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>World City Guesser</title>
+        <link rel="icon" type="image/png" href="faicon.png">
+    
+        <script src="CityLogic.js"></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    
+        <style>
+          body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 0;
+          }
+  
+          #inputPanel {
+              text-align: center;
+              margin-top: 20px;
+          }
+  
+          #guessField {
+              width: 300px;
+              margin-right: 10px;
+              padding: 10px;
+              border-radius: 5px;
+              border: 1px solid #ccc;
+          }
+
+
+          #charactersLabel,
+          #instructionLabel,
+          #label1,
+          #guesseslabel {
+              display: block;
+              margin-top: 10px;
+              font-weight: bold;
+          }
+
+          
+  
+          button {
+              margin-top: 10px;
+              padding: 10px 20px;
+              font-size: 16px;
+              cursor: pointer;
+              border: none;
+              border-radius: 5px;
+              background-color: #1a73e8;
+              color: #fff;
+              transition: background-color 0.3s ease;
+          }
+  
+          button:hover {
+              background-color: #1765cc;
+          }
+  
+          #distance {
+              display: block;
+              margin-top: 10px;
+              font-weight: bold;
+          }
+  
+          #map {
+              height: 500px;
+              width: 100%;
+              max-width: 900px;
+              margin: auto;
+              margin-top: 20px;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+              
+          }
+  
+          #response-container {
+              background-color: rgba(255, 255, 255, 0.95);
+              border-radius: 5px;
+              box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.3);
+              margin: 0px;
+              padding: 0px;
+              font-size: small;
+              overflow: auto;
+              max-height: 0px;
+          }
+  
+          #instructions {
+              background-color: rgba(255, 255, 255, 0.95);
+              border-radius: 5px;
+              box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.3);
+              margin: 10px;
+              padding: 1rem;
+              font-size: medium;
+          }
+
+          #testing {
+            position: absolute;
+            right: 10px;
+            top: 0px; /* Adjust the vertical position as needed */
+        }
+        
+      
+        #countryname {
+          position: absolute;
+          left: 10px;
+          top: 0px; /* Adjust the vertical position as needed */
+          display: block;
+          margin-top: 0px;
+          font-weight: bold;
+      }
+      
+      #provincename {
+          position: absolute;
+          left: 10px;
+          top: 15px; /* Adjust the vertical position as needed */
+          display: block;
+          margin-top: 0px;
+          font-weight: bold;
+      }
+      
+      #cityname {
+          position: absolute;
+          left: 10px;
+          top: 30px; /* Adjust the vertical position as needed */
+          display: block;
+          margin-top: 0px;
+          font-weight: bold;
+      }
+
+      #submitGuess {
+         position: absolute;
+            right: 10px;
+            top: 40px; /* Adjust the vertical position as needed */
+      }
+
+
+      </style>
+
+      
+  </head>
+  <body>
+      <div id="inputPanel">
+          <label id="instructionLabel">Guess the Country:</label>
+          <input type="text" id="guessField" autocomplete="off" />
+          <button id="submitGuess">Submit Guess</button>
+          <label id="charactersLabel"></label>
+          <label id="countryname"></label>
+          <label id="provincename"></label>
+          <label id="cityname"></label>
+          <label id="label1"></label>
+          <label id="guesseslabel"></label> 
+          <button id="testing">Give Up?</button>
+          <label id="distance"></label>
+      </div>
+
+      <div id="result"></div>
+
+      <div id="map"></div>
+
+
+  <script>
+    let map;
+    let marker;
+    let geocoder;
+    let responseDiv;
+    let response;
+    let multiplemarker;
+    let citymarker;
+    let placeholder = [];
+    let characters = [];
+    let guesses = [];
+    var answerCounts = {};
+    let hiddenCityMarker;
+    let positionofindex = 0;
+    let file = "/src/World_Cities/world-cities.txt";
+    let verifiedcountry = false;
+    let verifiedprovice = false;
+    let verifiedcity = false;
+    let dontadd = false;
+    const cityLogic = new CityLogic();
+    let country, province, city; // Declare the variables at a higher scope
+
+    const appID = ''; //insert your WolframAlpha API here
+
+    async function startGame() {
+        try {
+            const randomcityarraylist = await cityLogic.getfilelogic(file);
+            city = cityLogic.getcity(randomcityarraylist);
+            province = cityLogic.getprovince(randomcityarraylist);
+            country = cityLogic.getcountry(randomcityarraylist);
+        } catch (error) {
+            console.error('Error occurred while setting up the game:', error);
+            // Handle the error appropriately, such as displaying a message to the user
+        }
+    }
+
+    startGame();
+
+    async function getCityInfo() {
+        if (!city) {
+            alert('Could not get city information');
+            return;
+        }
+    
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = 'Loading...';
+    
+        try {
+            const population = await fetchWolframAlphaData(`population of ${city}`, ["population", "result", "value", "answer"]);
+            const nearbycities = await fetchWolframAlphaData(`nearby cities of ${city}`, ["nearby cities", "result", "value", "answer"]);
+            const localTime = await fetchWolframAlphaData(`current local time in ${city}`, [ "current local time", "result", "value", "answer"]);
+           
+    
+            displayCityInfo(city, population, nearbycities, localTime);
+        } catch (error) {
+            console.error('Error:', error);
+            resultDiv.innerHTML = 'There was an error fetching the data.';
+        }
+    }
+    
+    async function fetchWolframAlphaData(query, relevantKeywords) {
+        const url = `http://localhost:3000/wolfram?q=${encodeURIComponent(query)}`;
+
+    
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+    
+        if (data.queryresult && data.queryresult.success && data.queryresult.pods) {
+            let relevantPod = null;
+    
+            // Look for the most relevant pod based on the keywords provided
+            for (const pod of data.queryresult.pods) {
+                if (isRelevantPod(pod, relevantKeywords)) {
+                    relevantPod = pod;
+                    break; // Stop once we find the first relevant pod
+                }
+            }
+    
+            if (relevantPod && relevantPod.subpods && relevantPod.subpods.length > 0) {
+                const content = relevantPod.subpods[0].plaintext || 'No data available';
+    
+                // Ensure the content is not just reiterating the query
+                if (!content.toLowerCase().includes(query.toLowerCase())) {
+                    return content;
+                }
+            }
+        }
+        return 'No data available';
+    }
+    
+    function isRelevantPod(pod, relevantKeywords) {
+        // Determine if the pod's title or content matches the relevant keywords
+        return relevantKeywords.some(keyword => pod.title.toLowerCase().includes(keyword));
+    }
+    
+    function displayCityInfo(city, population, nearbycities, localTime) {
+        const resultDiv = document.getElementById('result');
+       // console.log(city, population, nearbycities, localTime);
+    
+        // Format the nearby cities information
+        const formattedNearbyCities = nearbycities
+            .split('\n')
+            .map(line => line.replace(/ \| /g, '--'))
+            .join('<br>');
+    
+        resultDiv.innerHTML = `
+            <h2>Information for ${city}</h2>
+            <p><strong>Population:</strong> ${population}</p>
+            <p><strong>Nearby Cities:</strong><br>${formattedNearbyCities}</p>
+            <p><strong>Local Time:</strong> ${localTime}</p>
+        `;
+    }
+    
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 2.25,
+            center: { lat: 51.4934, lng: 0.0098 },
+            mapTypeControl: false,
+            fullscreenControl: false,
+        });
+
+        geocoder = new google.maps.Geocoder();
+
+        const guessField = document.getElementById("guessField");
+        const submitGuessButton = document.getElementById("submitGuess");
+        const distancelabel = document.getElementById("distance");
+        const tests = document.getElementById("testing");
+
+        guessField.type = "text";
+        guessField.placeholder = "Enter a location";
+
+        guessField.addEventListener("keyup", function(event) {
+          // Check if the Enter key was pressed
+          if (event.key === "Enter") {
+              // Call the function to handle submitting the guess
+              submitGuess();
+
+        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+
+        const multiplemarkerColor = 'red';
+        const multiplemarkerImageURL = `https://maps.google.com/mapfiles/ms/icons/${multiplemarkerColor}-dot.png`;
+
+        const guessedmarkerColor = 'green'; // Change 'blue' to any color you want
+        const guessedmarkerImageURL = `https://maps.google.com/mapfiles/ms/icons/${guessedmarkerColor}-dot.png`;
+      
+          // Check if multiplemarker exists, if not create it
+          if (!multiplemarker) {
+              multiplemarker = new google.maps.Marker({
+                  map,
+                  icon: {
+                    url: multiplemarkerImageURL,
+                    scaledSize: new google.maps.Size(40, 40) // Adjust the size of the marker image as needed
+                }
+              });
+          }
+
+          guessedmarker = new google.maps.Marker({
+            map,
+            icon: {
+              url: guessedmarkerImageURL,
+              scaledSize: new google.maps.Size(40, 40) // Adjust the size of the marker image as needed
+          }
+            
+          });
+
+          geocode({ address: guessField.value }, guessedmarker);
+          // Geocode the guess address and update multiplemarker position
+          geocode({ address: guessField.value }, multiplemarker);
+          // Geocode the city and calculate distance if successful
+          geocoder.geocode({ address: city }, (results, status) => {
+              if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+                  hiddenCityMarker = new google.maps.Marker({
+                      position: results[0].geometry.location,
+                      map: map,
+                      title: city + ", " + province + ", " + country, // Set the title of the marker to the city name
+                  });
+      
+                  hiddenCityMarker.setVisible(false);
+      
+                  // Get positions for calculations
+                  const hiddenmarkerPosition = hiddenCityMarker.getPosition();
+                  const hiddenmarkerLatitude = hiddenmarkerPosition.lat();
+                  const hiddenmarkerLongitude = hiddenmarkerPosition.lng();
+
+                  guessField.value = "";
+      
+                  // Wait for multiplemarker to be updated
+                  setTimeout(() => {
+                    const multiplemarkerPosition = multiplemarker.getPosition();
+                    const multiplemarkerLatitude = multiplemarkerPosition.lat();
+                    const multiplemarkerLongitude = multiplemarkerPosition.lng();
+                
+                    // Calculate distance
+                    const distance = haversine_distance(hiddenmarkerLatitude, hiddenmarkerLongitude, multiplemarkerLatitude, multiplemarkerLongitude);
+                
+                    // Random offset multiplier
+                    const randomOffsetMultiplier = (Math.random() * 2) + 1; // Random multiplier between 1 and 3
+                
+                    // Convert distance to meters and apply the random offset
+                    const distanceInMeters = distance * 1609.34; // Convert miles to meters
+                    const circleRadius = distanceInMeters * randomOffsetMultiplier;
+                
+                    //console.log(circleRadius);
+                
+                    // Update distance label
+                    document.getElementById('distance').innerText = "Distance from city: " + distance.toFixed(5) + " mi.";
+                
+                    const circleOptions = {
+                        strokeColor: randomColor, // Color of the circle border
+                        strokeOpacity: 1, // Opacity of the circle border
+                        strokeWeight: 4, // Thickness of the circle border
+                        fillColor: randomColor, // Fill color of the circle
+                        fillOpacity: 0.0, // Opacity of the circle fill
+                        map, // Map to add the circle to
+                        center: multiplemarker.getPosition(), // Center of the circle
+                        radius: circleRadius, // Radius of the circle in meters
+                    };
+                
+                    if (distance.toFixed(5) > 1000) {
+                        // Optional: Handle cases where distance is greater than 2000 miles if needed
+                    } else {
+                        const circle = new google.maps.Circle(circleOptions);
+                        // Add the circle to the map
+                        circle.setMap(map);
+                    }
+                
+                }, 250); // Adjust the delay as needed
+                
+                } else {
+                  throw new Error('Geocode was not successful. Status: ' + status);
+              }
+          });
+          }
+      });
+      
+
+        response = document.createElement("pre");
+        response.id = "response";
+        response.innerText = "";
+        responseDiv = document.createElement("div");
+        responseDiv.id = "response-container";
+        responseDiv.appendChild(response);
+
+        const instructionsElement = document.createElement("p");
+
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(guessField);
+       // map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(submitGuessButton);
+        map.controls[google.maps.ControlPosition.LEFT_TOP].push(instructionsElement);
+        map.controls[google.maps.ControlPosition.LEFT_TOP].push(responseDiv);
+
+        marker = new google.maps.Marker({
+            map,
+        });
+
+
+        submitGuessButton.addEventListener("click", () => {     
+          submitGuess();
+          
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+
+        const multiplemarkerColor = 'red'; // Change 'blue' to any color you want
+        const multiplemarkerImageURL = `https://maps.google.com/mapfiles/ms/icons/${multiplemarkerColor}-dot.png`;
+
+        const guessedmarkerColor = 'red'; // Change 'blue' to any color you want
+        const guessedmarkerImageURL = `https://maps.google.com/mapfiles/ms/icons/${guessedmarkerColor}-dot.png`;
+      
+          // Check if multiplemarker exists, if not create it
+          if (!multiplemarker) {
+              multiplemarker = new google.maps.Marker({
+                  map,
+                  icon: {
+                    url: multiplemarkerImageURL,
+                    scaledSize: new google.maps.Size(40, 40) // Adjust the size of the marker image as needed
+                }
+              });
+          }
+
+       
+
+          guessedmarker = new google.maps.Marker({
+            map,
+            icon: {
+              url: guessedmarkerImageURL,
+              scaledSize: new google.maps.Size(40, 40) // Adjust the size of the marker image as needed
+          }
+            
+          });
+
+          geocode({ address: guessField.value }, guessedmarker);
+          // Geocode the guess address and update multiplemarker position
+          geocode({ address: guessField.value }, multiplemarker);
+      
+          // Geocode the city and calculate distance if successful
+          geocoder.geocode({ address: city }, (results, status) => {
+              if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+                  hiddenCityMarker = new google.maps.Marker({
+                      position: results[0].geometry.location,
+                      map: map,
+                      title: city + ", " + province + ", " + country, // Set the title of the marker to the city name
+                  });
+      
+                  hiddenCityMarker.setVisible(false);
+      
+                  // Get positions for calculations
+                  const hiddenmarkerPosition = hiddenCityMarker.getPosition();
+                  const hiddenmarkerLatitude = hiddenmarkerPosition.lat();
+                  const hiddenmarkerLongitude = hiddenmarkerPosition.lng();
+      
+
+                  guessField.value = "";
+                  // Wait for multiplemarker to be updated
+                  
+                  setTimeout(() => {
+                    const multiplemarkerPosition = multiplemarker.getPosition();
+                    const multiplemarkerLatitude = multiplemarkerPosition.lat();
+                    const multiplemarkerLongitude = multiplemarkerPosition.lng();
+                
+                    // Calculate distance
+                    const distance = haversine_distance(hiddenmarkerLatitude, hiddenmarkerLongitude, multiplemarkerLatitude, multiplemarkerLongitude);
+                
+                    // Random offset multiplier
+                    const randomOffsetMultiplier = (Math.random() * 2) + 1; // Random multiplier between 1 and 3
+                
+                    // Convert distance to meters and apply the random offset
+                    const distanceInMeters = distance * 1609.34; // Convert miles to meters
+                    const circleRadius = distanceInMeters * randomOffsetMultiplier;
+                
+                    //console.log(circleRadius);
+                
+                    // Update distance label
+                    document.getElementById('distance').innerText = "Distance from city: " + distance.toFixed(5) + " mi.";
+                
+                    const circleOptions = {
+                        strokeColor: randomColor, // Color of the circle border
+                        strokeOpacity: 1, // Opacity of the circle border
+                        strokeWeight: 4, // Thickness of the circle border
+                        fillColor: randomColor, // Fill color of the circle
+                        fillOpacity: 0.0, // Opacity of the circle fill
+                        map, // Map to add the circle to
+                        center: multiplemarker.getPosition(), // Center of the circle
+                        radius: circleRadius, // Radius of the circle in meters
+                    };
+                
+                    if (distance.toFixed(5) > 1000) {
+                        // Optional: Handle cases where distance is greater than 2000 miles if needed
+                    } else {
+                        const circle = new google.maps.Circle(circleOptions);
+                        // Add the circle to the map
+                        circle.setMap(map);
+                    }
+                
+                }, 250); // Adjust the delay as needed
+                
+                } else {
+                  throw new Error('Geocode was not successful. Status: ' + status);
+              }
+          });
+      });
+     
+      tests.addEventListener("click", () => {
+        if (!citymarker) {
+            citymarker = new google.maps.Marker({
+                map,
+            });
+        }
+    
+        geocode({ address: city }, citymarker);
+    
+        countryname.innerText = "Country: " + country;
+        provincename.innerText = "Province: " + province;
+        cityname.innerText = "City: " + city;
+    
+        // Asynchronous function to fetch and display city information
+        async function getCityInfo() {
+            if (!city) {
+                alert('Could not get city information');
+                return;
+            }
+    
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Loading...';
+    
+            try {
+                const population = await fetchWolframAlphaData(`population of ${city}, ${country}`, ["population", "result", "value", "answer"]);
+                const nearbycities = await fetchWolframAlphaData(`nearby cities of ${city}, ${country}`, ["nearby cities", "result", "value", "answer"]);
+                const localTime = await fetchWolframAlphaData(`current local time in ${city}, ${country}`, ["current local time", "result", "value", "answer"]);
+    
+                // Display the fetched information
+                displayCityInfo(city, population, nearbycities, localTime);
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = 'There was an error fetching the data.';
+            }
+        }
+    
+        // Function to fetch data from Wolfram Alpha and return the most relevant pod
+        async function fetchWolframAlphaData(query, relevantKeywords) {
+            const url = `http://localhost:3000/wolfram?q=${encodeURIComponent(query)}`;
+
+    
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+    
+            if (data.queryresult && data.queryresult.success && data.queryresult.pods) {
+                let relevantPod = null;
+    
+                // Look for the most relevant pod based on the keywords provided
+                for (const pod of data.queryresult.pods) {
+                    if (isRelevantPod(pod, relevantKeywords)) {
+                        relevantPod = pod;
+                        break; // Stop once we find the first relevant pod
+                    }
+                }
+    
+                if (relevantPod && relevantPod.subpods && relevantPod.subpods.length > 0) {
+                    const content = relevantPod.subpods[0].plaintext || 'No data available';
+    
+                    // Ensure the content is not just reiterating the query
+                    if (!content.toLowerCase().includes(query.toLowerCase())) {
+                        return content;
+                    }
+                }
+            }
+            return 'No data available';
+        }
+    
+        // Function to check if a pod matches the relevant keywords
+        function isRelevantPod(pod, relevantKeywords) {
+            // Determine if the pod's title or content matches the relevant keywords
+            return relevantKeywords.some(keyword => pod.title.toLowerCase().includes(keyword));
+        }
+    
+        // Function to display the city information
+        function displayCityInfo(city, population, nearbycities, localTime) {
+            const resultDiv = document.getElementById('result');
+            //console.log(city, population, nearbycities, localTime);
+        
+            // Format the nearby cities information
+            const formattedNearbyCities = nearbycities
+                .split('\n')
+                .map(line => line.replace(/ \| /g, '--'))
+                .join('<br>');
+        
+            resultDiv.innerHTML = `
+                <h2>Information for ${city}</h2>
+                <p><strong>Population:</strong> ${population}</p>
+                <p><strong>Nearby Cities:</strong><br>${formattedNearbyCities}</p>
+                <p><strong>Local Time:</strong> ${localTime}</p>
+            `;
+        }
+        
+    
+        // Call getCityInfo to fetch and display city info
+        getCityInfo();
+    
+        submitGuess();
+        map.setZoom(7);
+        sleep(20000).then(() => {
+            location.reload();
+        });
+    });
+    
+        function clear() {
+            marker.setMap(null);
+            responseDiv.style.display = "none";
+        }
+
+        function geocode(request, markertouse) {
+            clear();
+            geocoder
+                .geocode(request)
+                .then((result) => {
+                    const { results } = result;
+                    map.setCenter(results[0].geometry.location);
+                    markertouse.setPosition(results[0].geometry.location);
+                    markertouse.setMap(map);
+                    responseDiv.style.display = "block";
+                    return results;
+                })
+                .catch((e) => {
+                    alert("Geocode was not successful for the following reason: " + e);
+                });
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function haversine_distance(lat1, long1, lat2, long2) {
+            var R = 3958.8; // Radius of the Earth in miles
+            var rlat1 = lat1 * (Math.PI / 180); // Convert degrees to radians
+            var rlat2 = lat2 * (Math.PI / 180); // Convert degrees to radians
+            var difflat = rlat2 - rlat1; // Radian difference (latitudes)
+            var difflon = (long2 - long1) * (Math.PI / 180); // Radian difference (longitudes)
+            var d = 2 * R * Math.asin(Math.sqrt(Math.sin(difflat / 2) * Math.sin(difflat / 2) + Math.cos(rlat1) * Math.cos(rlat2) * Math.sin(difflon / 2) * Math.sin(difflon / 2)));
+            return d;
+        }
+    }
+
+      function submitGuess() {
+
+                function normalizeString(str) {
+                      const Acharacters = {
+                          "á": "a",
+                          "Á": "A",
+                          "à": "a",
+                          "À": "A",
+                          "â": "a",
+                          "Â": "A",
+                          "ä": "a",
+                          "Ä": "A",
+                          "ã": "a",
+                          "Ã": "A",
+                          "å": "a",
+                          "Å": "A"
+                      };
+                  
+                      const Ccharacters = {
+                          "ç": "c",
+                          "Ç": "C"
+                      };
+                  
+                      const Echaracters = {
+                          "é": "e",
+                          "É": "E",
+                          "è": "e",
+                          "È": "E",
+                          "ê": "e",
+                          "Ê": "E",
+                          "ë": "e",
+                          "Ë": "E"
+                      };
+                  
+                      const Icharacters = {
+                          "í": "i",
+                          "Í": "I",
+                          "ì": "i",
+                          "Ì": "I",
+                          "î": "i",
+                          "Î": "I",
+                          "ï": "i",
+                          "ı": "i",
+                          "I": "I",
+                          "İ": "I",
+                          "i": "i",
+                          "Ï": "I"
+                      };
+                  
+                      const Ocharacters = {
+                          "ó": "o",
+                          "Ó": "O",
+                          "ò": "o",
+                          "Ò": "O",
+                          "ô": "o",
+                          "Ô": "O",
+                          "ö": "o",
+                          "Ö": "O",
+                          "õ": "o",
+                          "Õ": "O",
+                          "ø": "o",
+                          "Ø": "O",
+                          "ō": "o",
+                          "Ō": "O"
+                      };
+                  
+                      const Ncharacters = {
+                          "ñ": "n",
+                          "Ñ": "N"
+                      };
+                  
+                      const Scharacters = {
+                          "ß": "s"
+                      };
+                  
+                      const Ucharacters = {
+                          "ú": "u",
+                          "Ú": "U",
+                          "ù": "u",
+                          "Ù": "U",
+                          "û": "u",
+                          "Û": "U",
+                          "ü": "u",
+                          "Ü": "U"
+                      };
+                  
+                      const specialCharacters = {
+                          ...Acharacters,
+                          ...Ccharacters,
+                          ...Echaracters,
+                          ...Icharacters,
+                          ...Ocharacters,
+                          ...Ncharacters,
+                          ...Scharacters,
+                          ...Ucharacters
+                      };
+                  
+                      return str.replace(/[áÁàÀâÂäÄãÃåÅçÇéÉèÈêÊëËíÍìÌîÎïÏóÓòÒôÔöÖõÕøØñÑßúÚùÙûÛüÜ]/g, match => specialCharacters[match] || match);
+                  }
+
+                const guessField = document.getElementById("guessField");
+                const instructionLabel = document.getElementById("instructionLabel");
+                const label1 = document.getElementById("label1");
+                const counts = document.getElementById("counts");
+                const countryname = document.getElementById("countryname");
+                const provincename = document.getElementById("provincename");
+                const cityname = document.getElementById("cityname");
+                const charactersLabel = document.getElementById("charactersLabel");
+                const guesseslabel = document.getElementById("guesseslabel");
+
+                const submitguessButton = document.getElementById("submitGuess");
+
+                const giveupbutton = document.getElementById("testing");
+    
+                 charactersLabel.innerText = "Characters: " + characters;
+    
+    
+                    const guess = normalizeString(guessField.value.trim().toLowerCase());
+                        const hascountry = guess.includes(normalizeString((country.toLowerCase()))) || guess.includes(country.toLowerCase());
+                        const hasprovince = guess.includes(normalizeString((province.toLowerCase()))) || guess.includes(province.toLowerCase());
+                        const hascity = guess.includes(normalizeString((city.toLowerCase()))) || guess.includes(city.toLowerCase());
+
+                        if (guesses.includes(guess)) {
+                          alert("You have already guessed '" + guess + "'. Please try a different guess.");
+                          positionofindex++;
+                          return; // Exit the function early
+                      } else {
+                        
+                guesses.push(guess);
+    
+                guesseslabel.innerText = "Guesses: " + guesses;
+              
+
+               
+         
+                if (hascountry) {
+                    verifiedcountry = true;
+                    characters = [];
+                    positionofindex = 0;
+                    map.setZoom(7);
+                    label1.innerText = "Your guess of " + guess + " was correct! The country was indeed " + country + ". Now, guess the province.";
+                    instructionLabel.innerText = "Guess the province!";
+                    countryname.innerText = "Country: " + country;
+    
+                    charactersLabel.innerText = "";
+                }
+    
+                if (verifiedcountry && hasprovince) {
+                    verifiedprovice = true;
+                    characters = [];
+                    positionofindex = 0;
+                    map.setZoom(12);
+                    label1.innerText = "Your guess of " + guess + " was correct! The province was indeed " + province + ". Now, guess the city.";
+                    instructionLabel.innerText = "Guess the city!";
+                    provincename.innerText = "Province: " + province;
+    
+                    charactersLabel.innerText = "";
+                }
+    
+                if (hascity && verifiedprovice) {
+                    verifiedcity = true;
+                    characters = [];
+                    positionofindex = 0;
+                    label1.innerText = "Your guess of " + guess + " was correct! The city was indeed " + city + ". Now, press the start over button if you want to start over!";
+                    cityname.innerText = "City: " + city;
+                    
+                        // Asynchronous function to fetch and display city information
+                        async function getCityInfo() {
+                            if (!city) {
+                                alert('Could not get city information');
+                                return;
+                            }
+                    
+                            const resultDiv = document.getElementById('result');
+                            resultDiv.innerHTML = 'Loading...';
+                    
+                            try {
+                                const population = await fetchWolframAlphaData(`population of ${city}, ${country}`, ["population", "result", "value", "answer"]);
+                                const nearbycities = await fetchWolframAlphaData(`nearby cities of ${city}, ${country}`, ["nearby cities", "result", "value", "answer"]);
+                                const localTime = await fetchWolframAlphaData(`current local time in ${city}, ${country}`, ["current local time", "result", "value", "answer"])
+                    
+                                // Display the fetched information
+                                displayCityInfo(city, population, nearbycities, localTime);
+                            } catch (error) {
+                                console.error('Error:', error);
+                                resultDiv.innerHTML = 'There was an error fetching the data.';
+                            }
+                        }
+                    
+                        // Function to fetch data from Wolfram Alpha and return the most relevant pod
+                        async function fetchWolframAlphaData(query, relevantKeywords) {
+                            const url = `http://localhost:3000/wolfram?q=${encodeURIComponent(query)}`;
+
+                    
+                            const response = await fetch(url);
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            const data = await response.json();
+                    
+                            if (data.queryresult && data.queryresult.success && data.queryresult.pods) {
+                                let relevantPod = null;
+                    
+                                // Look for the most relevant pod based on the keywords provided
+                                for (const pod of data.queryresult.pods) {
+                                    if (isRelevantPod(pod, relevantKeywords)) {
+                                        relevantPod = pod;
+                                        break; // Stop once we find the first relevant pod
+                                    }
+                                }
+                    
+                                if (relevantPod && relevantPod.subpods && relevantPod.subpods.length > 0) {
+                                    const content = relevantPod.subpods[0].plaintext || 'No data available';
+                    
+                                    // Ensure the content is not just reiterating the query
+                                    if (!content.toLowerCase().includes(query.toLowerCase())) {
+                                        return content;
+                                    }
+                                }
+                            }
+                            return 'No data available';
+                        }
+                    
+                        // Function to check if a pod matches the relevant keywords
+                        function isRelevantPod(pod, relevantKeywords) {
+                            // Determine if the pod's title or content matches the relevant keywords
+                            return relevantKeywords.some(keyword => pod.title.toLowerCase().includes(keyword));
+                        }
+                    
+                        // Function to display the city information
+                        function displayCityInfo(city, population, nearbycities, localTime) {
+                            const resultDiv = document.getElementById('result');
+                            //console.log(city, population, nearbycities, localTime);
+                        
+                            // Format the nearby cities information
+                            const formattedNearbyCities = nearbycities
+                                .split('\n')
+                                .map(line => line.replace(/ \| /g, '--'))
+                                .join('<br>');
+                        
+                            resultDiv.innerHTML = `
+                                <h2>Information for ${city}</h2>
+                                <p><strong>Population:</strong> ${population}</p>
+                                <p><strong>Nearby Cities:</strong><br>${formattedNearbyCities}</p>
+                                <p><strong>Local Time:</strong> ${localTime}</p>
+                            `;
+                        }
+                        
+                    
+                        // Call getCityInfo to fetch and display city info
+                        getCityInfo();
+
+                    giveupbutton.style.display = "none";
+
+                    instructionLabel.innerText = "Start Over?";
+    
+                    const yes = document.createElement("button");
+                    yes.innerText = "Start Over";
+
+                    yes.style.position = "absolute";
+                    yes.style.right = "10px";
+                    yes.style.top = "0px"; // Adjust the vertical position as needed
+
+                    submitguessButton.style.visibility = "hidden";
+
+                    yes.addEventListener("click", () => {
+                        location.reload();
+                    });
+
+    
+                    document.getElementById("inputPanel").appendChild(yes);
+                }
+    
+                if (!verifiedcountry && !dontadd) {
+               
+                    const movingcountry = country.charAt(positionofindex);
+                    characters.push(movingcountry);
+    
+                    charactersLabel.innerText = "Characters: " + characters.join(", ");
+
+
+    
+                    // console.log(charactersLabel);
+    
+    
+           
+    
+                    if (hascountry) {
+                        verifiedcountry = true;
+                        characters = [];
+                    }
+    
+                    if (characters.length === country.length) {
+                  
+                        instructionLabel.innerText = "This is all of the characters!";
+                        dontadd = true;
+                    }
+                }
+    
+                if (verifiedcountry && !verifiedprovice && !dontadd) {
+                 
+                    const movingprovince = province.charAt(positionofindex);
+                    characters.push(movingprovince);
+    
+                    charactersLabel.innerText = "Characters: " + characters.join(", ");
+
+
+                
+             
+    
+                    if (hasprovince && verifiedcountry) {
+                        verifiedprovice = true;
+                        characters = [];
+                    }
+    
+                    if (characters.length === province.length) {
+                        instructionLabel.innerText = "This is all of the characters!";
+                        dontadd = true;
+                    }
+                }
+    
+                if (verifiedcountry && verifiedprovice && !verifiedcity && !dontadd) {
+                    const movingcity = city.charAt(positionofindex);
+                    characters.push(movingcity);
+                  
+    
+                    charactersLabel.innerText = "Characters: " + characters.join(", ");
+
+
+    
+    
+                    if (hascity && verifiedprovice) {
+                        verifiedcity = true;
+                        characters = [];
+                    }
+    
+                    if (characters.length === city.length) {
+                      instructionLabel.innerText = "This is all of the characters!";
+                        dontadd = true;
+                    }
+                }
+    
+                    if (!verifiedcountry && !verifiedprovice && !verifiedcity && !dontadd) {
+                        instructionLabel.innerText = ("Sorry, that was not the right answer!")
+                    }
+                      
+}
+
+                    positionofindex++;
+            
+}
+
+
+
+
+    window.initMap = initMap;
+
+</script>
+
+   
+      <script
+      src=""
+      defer
+    ></script>
+
+
+</body>
+</html>
+  

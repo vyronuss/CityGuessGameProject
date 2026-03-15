@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>World City Guessing Game</title>
+    
+        <script src="CityLogic.js"></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+            }
+    
+            #inputPanel {
+                margin: 20px;
+                text-align: center; /* Center align the content */
+            }
+    
+            #guessField {
+                width: 300px;
+                margin-right: 10px;
+            }
+    
+            #instructionLabel {
+                margin-bottom: 10px;
+                display: block; /* Display block for better spacing */
+            }
+    
+            #charactersLabel {
+                margin-top: 10px;
+                font-weight: bold; /* Make characters label bold */
+            }
+    
+            button {
+                margin-top: 10px;
+                padding: 5px 10px;
+                font-size: 14px;
+            }
+    
+            #countryname,
+            #provincename,
+            #cityname,
+            #label1,
+            #guesseslabel {
+                display: block; /* Display block for better spacing */
+                margin-top: 10px; /* Add some top margin for spacing */
+            }
+
+                /**
+           * @license
+           * Copyright 2019 Google LLC. All Rights Reserved.
+           * SPDX-License-Identifier: Apache-2.0
+           */
+          /* 
+           * Always set the map height explicitly to define the size of the div element
+           * that contains the map. 
+           */
+           #map {
+            height: 675px; /* Set the desired height for the map */
+            width: 100%; /* Set the width to 100% of the container */
+            max-width: 875px; /* Set a maximum width for the map */
+            margin: auto; /* Center the map horizontally */
+            margin-top: 20px; /* Add top margin to separate from the input panel */
+        }
+          
+          /* 
+           * Optional: Makes the sample page fill the window. 
+           */
+          html,
+          body {
+            height: 75%;
+            margin: 0;
+            padding: 0;
+          }
+          
+          input[type=text] {
+            background-color: #fff;
+            border: 0;
+            border-radius: 2px;
+            box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.3);
+            margin: 10px;
+            padding: 0 0.5em;
+            font: 400 18px Roboto, Arial, sans-serif;
+            overflow: hidden;
+            line-height: 40px;
+            margin-right: 0;
+            min-width: 25%;
+          }
+          
+          input[type=button] {
+            background-color: #fff;
+            border: 0;
+            border-radius: 2px;
+            box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.3);
+            margin: 10px;
+            padding: 0 0.5em;
+            font: 400 18px Roboto, Arial, sans-serif;
+            overflow: hidden;
+            height: 40px;
+            cursor: pointer;
+            margin-left: 5px;
+          }
+          input[type=button]:hover {
+            background: rgb(235, 235, 235);
+          }
+          input[type=button].button-primary {
+            background-color: #1a73e8;
+            color: white;
+          }
+          input[type=button].button-primary:hover {
+            background-color: #1765cc;
+          }
+          input[type=button].button-secondary {
+            background-color: white;
+            color: #1a73e8;
+          }
+          input[type=button].button-secondary:hover {
+            background-color: #d2e3fc;
+          }
+          
+          #response-container {
+            background-color: #fff;
+            border: 0;
+            border-radius: 2px;
+            box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.3);
+            margin: 10px;
+            padding: 0 0.5em;
+            font: 400 18px Roboto, Arial, sans-serif;
+            overflow: hidden;
+            overflow: auto;
+            max-height: 50%;
+            max-width: 90%;
+            background-color: rgba(255, 255, 255, 0.95);
+            font-size: small;
+          }
+          
+          #instructions {
+            background-color: #fff;
+            border: 0;
+            border-radius: 2px;
+            box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.3);
+            margin: 10px;
+            padding: 0 0.5em;
+            font: 400 18px Roboto, Arial, sans-serif;
+            overflow: hidden;
+            padding: 1rem;
+            font-size: medium;
+          }
+          
+              </style>
+          
+
+
+    
+
+    </head>
+    
+    <body>
+         
+  
+   <div id="inputPanel"></div>
+             
+            <label id="instructionLabel">Guess the Country:</label>
+            
+            <input type="text" id="guessField" />
+            <button id="submitGuess">Submit Guess</button>
+             <label id="charactersLabel"></label>
+            <label id="countryname"></label>
+            <label id="provincename"></label>
+            <label id="cityname"></label>
+            <label id="label1"></label>
+            <label id="guesseslabel"></label>
+
+            <button id="testing">Give Up?</button>
+
+            <label id="distance"></label>
+
+        </div>
+
+
+       <div id="map"></div>
+
+
+    <script>
+        let placeholder = [];
+        let characters = [];
+        let guesses = [];
+        let positionofindex = 0;
+
+        let file = "/src/World_Cities/world-cities.txt";
+
+        let verifiedcountry = false;
+        let verifiedprovice = false;
+        let verifiedcity = false;
+        let dontadd = false;
+
+        const cityLogic = new CityLogic();
+        let country, province, city; // Declare the variables at a higher scope
+
+        async function startGame() {
+            const randomcityarraylist = await cityLogic.getfilelogic(file);
+        
+             city = cityLogic.getcity(randomcityarraylist);
+             province = cityLogic.getprovince(randomcityarraylist);
+             country = cityLogic.getcountry(randomcityarraylist);
+
+
+        
+            console.log("City: " + city);
+            console.log("Province: " + province);
+            console.log("Country: " + country);
+        
+            // Call your game logic or whatever function you need here
+        }
+
+        startGame();
+
+
+           
+
+         const submitbutton = document.getElementById("submitGuess");
+
+       
+            function submitGuess() {
+            
+                const guessField = document.getElementById("guessField");
+                const instructionLabel = document.getElementById("instructionLabel");
+                const label1 = document.getElementById("label1");
+                const counts = document.getElementById("counts");
+                const countryname = document.getElementById("countryname");
+                const provincename = document.getElementById("provincename");
+                const cityname = document.getElementById("cityname");
+                const charactersLabel = document.getElementById("charactersLabel");
+                const guesseslabel = document.getElementById("guesseslabel");
+    
+                 charactersLabel.innerText = "Characters: " + characters;
+    
+    
+                    const guess = guessField.value.trim().toLowerCase();
+                        const hascountry = guess.includes(country.toLowerCase());
+                        const hasprovince = guess.includes(province.toLowerCase());
+                        const hascity = guess.includes(city.toLowerCase());
+    
+                guesses.push(guess);
+    
+                guesseslabel.innerText = "Guesses: " + guesses;
+    
+
+
+
+
+
+               
+         
+                if (hascountry) {
+                    verifiedcountry = true;
+                    characters = [];
+                    positionofindex = 0;
+                    map.setZoom(7);
+                    label1.innerText = "Your guess of " + guess + " was correct! The country was indeed " + country + ". Now, guess the province.";
+                    instructionLabel.innerText = "Guess the province!";
+                    countryname.innerText = "Country: " + country;
+    
+                    charactersLabel.innerText = "";
+                }
+    
+                if (verifiedcountry && hasprovince) {
+                    verifiedprovice = true;
+                    characters = [];
+                    positionofindex = 0;
+                    map.setZoom(12);
+                    label1.innerText = "Your guess of " + guess + " was correct! The province was indeed " + province + ". Now, guess the city.";
+                    instructionLabel.innerText = "Guess the city!";
+                    provincename.innerText = "Province: " + province;
+    
+                    charactersLabel.innerText = "";
+                }
+    
+                if (hascity && verifiedprovice) {
+                    verifiedcity = true;
+                    characters = [];
+                    positionofindex = 0;
+                    label1.innerText = "Your guess of " + guess + " was correct! The city was indeed " + city + ". Now, press the start over button if you want to start over!";
+                    cityname.innerText = "City: " + city;
+                    instructionLabel.innerText = "Start Over?";
+    
+                    const yes = document.createElement("button");
+                    yes.innerText = "Start Over";
+                    yes.addEventListener("click", () => {
+                        location.reload();
+                    });
+
+    
+                    document.getElementById("inputPanel").appendChild(yes);
+                    document.getElementById("inputPanel").appendChild(no);
+                }
+    
+                if (!verifiedcountry && !dontadd) {
+               
+                    const movingcountry = country.charAt(positionofindex);
+                    characters.push(movingcountry);
+    
+                    charactersLabel.innerText = characters;
+    
+                    console.log(charactersLabel);
+    
+    
+           
+    
+                    if (hascountry) {
+                        verifiedcountry = true;
+                        characters = [];
+                    }
+    
+                    if (characters.length === country.length) {
+                  
+                        instructionLabel.innerText = "This is all of the characters!";
+                        dontadd = true;
+                    }
+                }
+    
+                if (verifiedcountry && !verifiedprovice && !dontadd) {
+                 
+                    const movingprovince = province.charAt(positionofindex);
+                    characters.push(movingprovince);
+    
+                    charactersLabel.innerText = characters;
+                
+             
+    
+                    if (hasprovince && verifiedcountry) {
+                        verifiedprovice = true;
+                        characters = [];
+                    }
+    
+                    if (characters.length === province.length) {
+                        instructionLabel.innerText = "This is all of the characters!";
+                        dontadd = true;
+                    }
+                }
+    
+                if (verifiedcountry && verifiedprovice && !verifiedcity && !dontadd) {
+                    const movingcity = city.charAt(positionofindex);
+                    characters.push(movingcity);
+                  
+    
+                    charactersLabel.innerText = characters;
+    
+    
+                    if (hascity && verifiedprovice) {
+                        verifiedcity = true;
+                        characters = [];
+                    }
+    
+                    if (characters.length === city.length) {
+                      instructionLabel.innerText = "This is all of the characters!";
+                        dontadd = true;
+                    }
+                }
+    
+                    if (!verifiedcountry && !verifiedprovice && !verifiedcity && !dontadd) {
+                        instructionLabel.innerText = ("Sorry, that was not the right answer!")
+                    }
+                      
+                    positionofindex++;
+            }
+        
+       
+    </script>
+
+
+
+ <script>
+        /**
+   * @license
+   * Copyright 2019 Google LLC. All Rights Reserved.
+   * SPDX-License-Identifier: Apache-2.0
+   */
+  // @ts-nocheck TODO remove when fixed
+
+
+
+  let map;
+  let marker;
+  let geocoder;
+  let responseDiv;
+  let response;
+
+  let multiplemarker;
+  let citymarker;
+  
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 2.25,
+      center: { lat: 51.4934, lng: 0.0098 },
+      mapTypeControl: false,
+    });
+
+    geocoder = new google.maps.Geocoder();
+
+  
+    const guessField = document.getElementById("guessField");
+    const submitGuessButton = document.getElementById("submitGuess");
+    const distancelabel = document.getElementById("distance");
+
+    const tests = document.getElementById("testing");
+  
+    guessField.type = "text";
+    guessField.placeholder = "Enter a location";
+  
+  
+    const clearButton = document.createElement("input");
+  
+    clearButton.type = "button";
+    clearButton.value = "Clear";
+    clearButton.classList.add("button", "button-secondary");
+    response = document.createElement("pre");
+    response.id = "response";
+    response.innerText = "";
+    responseDiv = document.createElement("div");
+    responseDiv.id = "response-container";
+    responseDiv.appendChild(response);
+  
+    const instructionsElement = document.createElement("p");
+  
+
+      map.controls[google.maps.ControlPosition.TOP_LEFT].push(guessField);
+      map.controls[google.maps.ControlPosition.TOP_LEFT].push(submitGuessButton);
+      map.controls[google.maps.ControlPosition.TOP_LEFT].push(clearButton);
+    map.controls[google.maps.ControlPosition.LEFT_TOP].push(instructionsElement);
+    map.controls[google.maps.ControlPosition.LEFT_TOP].push(responseDiv);
+
+    marker = new google.maps.Marker({
+      map,
+    });
+
+    map.addListener("click", (e) => {
+      geocode({ location: e.latLng });
+    });
+
+    submitGuessButton.addEventListener("click", () => {
+            multiplemarker = new google.maps.Marker({
+                        map,
+                });
+        
+        geocode({ address: guessField.value }, multiplemarker);
+        submitGuess();
+
+        
+      });
+
+
+      tests.addEventListener("click", () => {
+        citymarker = new google.maps.Marker({
+                    map,
+            });
+
+
+    
+    geocode({ address: city }, citymarker);
+
+    countryname.innerText = "Country: " + country;
+    provincename.innerText = "Province: " + province;
+    cityname.innerText = "City: " + city;
+
+    submitGuess();
+    map.setZoom(7);
+
+            sleep(7500).then(() => {    location.reload(); });
+
+
+
+    
+  });
+
+const distance = google.maps.geometry.spherical.computeDistanceBetween(citymarker, multiplemarker);
+console.log(`Distance: ${distance} meters`);
+
+    clearButton.addEventListener("click", () => {
+      clear();
+    });
+    clear();
+  }
+  
+  function clear() {
+    marker.setMap(null);
+    responseDiv.style.display = "none";
+  }
+  
+  function geocode(request, markertouse) {
+    clear();
+    geocoder
+      .geocode(request)
+      .then((result) => {
+        const { results } = result;
+  
+        map.setCenter(results[0].geometry.location);
+        markertouse.setPosition(results[0].geometry.location);
+        markertouse.setMap(map);
+        responseDiv.style.display = "block";
+       // response.innerText = JSON.stringify(result, null, 2);
+        return results;
+      })
+      .catch((e) => {
+        alert("Geocode was not successful for the following reason: " + e);
+      });
+  }
+  
+  function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+  
+  window.initMap = initMap;
+  
+
+  
+    </script>
+
+   
+      <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&v=weekly"
+      defer
+    ></script>
+
+</body>
+</html>

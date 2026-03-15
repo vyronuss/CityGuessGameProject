@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@googlemaps/js-api-loader": "^1.16.6",
+    "axios": "^1.7.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "node-fetch": "^3.3.2"
+  }
+}
