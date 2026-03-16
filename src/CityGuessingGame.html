@@ -333,7 +333,7 @@
           // Geocode the guess address and update multiplemarker position
           geocode({ address: `${guessField.value}, ${countryname.textContent}, ${provincename.textContent}` }, multiplemarker);
           // Geocode the city and calculate distance if successful
-          geocoder.geocode({ address: `${city}` }, (results, status) => {
+          geocoder.geocode({ address: `${city}, ${province}, ${country}`}, (results, status) => {
               if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
                   hiddenCityMarker = new google.maps.Marker({
                       position: results[0].geometry.location,
@@ -457,7 +457,7 @@
           geocode({ address: `${guessField.value}, ${countryname.textContent}, ${provincename.textContent}` }, multiplemarker);
       
           // Geocode the city and calculate distance if successful
-          geocoder.geocode({ address: `${city}` }, (results, status) => {
+          geocoder.geocode({ address: `${city},${province}, ${country}` }, (results, status) => {
               if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
                   hiddenCityMarker = new google.maps.Marker({
                       position: results[0].geometry.location,
